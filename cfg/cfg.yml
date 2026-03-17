@@ -1,0 +1,9 @@
+port: 8080
+
+db:
+  host: ep-holy-shadow-a9m2wj52.gwc.azure.neon.tech
+  port: 5432
+  user: neondb_owner
+  password: file::./secrets/db_password.txt
+  name: bildur
+  sslMode: require
