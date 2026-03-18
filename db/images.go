@@ -8,8 +8,9 @@ import (
 
 func (db *DB) GetImages() (images []model.PreviewImage, err error) {
 	query := `
-	select ip.id, ip."imageId", ip."variantName", ip."storagePath", ip.width, ip.height, ip."createdAt"
+	select ip.id, ip."imageId", ip."variantName", ip."storagePath", ip.width, ip.height, ip."createdAt", i."extension", i."name"
 	from "imagePreviews" ip
+	left join images i on i.id = ip."imageId"
 	`
 
 	images, err = Query[model.PreviewImage](db, query, nil)
@@ -40,6 +41,61 @@ func (db *DB) GetImageByID(id string) (image *model.Image, err error) {
 
 	if len(images) > 0 {
 		image = &images[0]
+	}
+
+	return
+}
+
+func (db *DB) InsertImage(image model.InsertImage) (id string, err error) {
+	query := `
+	insert into images (name, "mimeType", extension, bytes, "storagePath", width, height)
+	values (:name, :mimeType, :extension, :bytes, :storagePath, :width, :height)
+	returning id
+	`
+
+	args := map[string]any{
+		"name":        image.Name,
+		"mimeType":    image.MimeType,
+		"extension":   image.Extension,
+		"bytes":       image.Bytes,
+		"storagePath": image.StoragePath,
+		"width":       image.Width,
+		"height":      image.Height,
+	}
+
+	query, args = In(query, args)
+
+	id, err = Exec(db, query, args)
+	if err != nil {
+		err = fmt.Errorf("error inserting image into database >> %s", err)
+		return
+	}
+
+	return
+}
+
+func (db *DB) InsertThumbnailImage(image model.InsertThumbnailImage) (id string, err error) {
+	query := `
+	insert into "imagePreviews" ("imageId", "variantName", "storagePath", width, height, "createdAt")
+	values (:imageId, :variantName, :storagePath, :width, :height, :createdAt)
+	returning id
+	`
+
+	args := map[string]any{
+		"imageId":     image.ParentID,
+		"variantName": image.VariantName,
+		"storagePath": image.StoragePath,
+		"width":       image.Width,
+		"height":      image.Height,
+		"createdAt":   image.CreatedAt,
+	}
+
+	query, args = In(query, args)
+
+	id, err = Exec(db, query, args)
+	if err != nil {
+		err = fmt.Errorf("error inserting thumbnail image into database >> %s", err)
+		return
 	}
 
 	return
