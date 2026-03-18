@@ -70,6 +70,9 @@ func (srv *Handler) CreateGinGroup() {
 	router.GET("/images", srv.HandleGetImages)
 	router.Static("/media/thumb", "./media/thumbnails")
 
+	router.GET("/images/:id", srv.HandleGetSingleImage)
+	router.Static("/media/fullsize", "./media/fullsize")
+
 	runner := fmt.Sprintf("localhost:%s", srv.Config.Port)
 	router.Run(runner)
 }

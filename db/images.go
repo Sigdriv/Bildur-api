@@ -20,3 +20,27 @@ func (db *DB) GetImages() (images []model.PreviewImage, err error) {
 
 	return
 }
+
+func (db *DB) GetImageByID(id string) (image *model.Image, err error) {
+	query := `
+	select i.id, i."name", i."mimeType", i.bytes, i."storagePath", i.width, i.height, i."createdAt"
+	from images i 
+	where id = :id
+	`
+
+	args := map[string]any{
+		"id": id,
+	}
+
+	images, err := Query[model.Image](db, query, args)
+	if err != nil {
+		err = fmt.Errorf("error fetching image from database >> %s", err)
+		return
+	}
+
+	if len(images) > 0 {
+		image = &images[0]
+	}
+
+	return
+}

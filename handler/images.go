@@ -22,3 +22,22 @@ func (srv *Handler) HandleGetImages(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"images": images})
 }
+
+func (srv *Handler) HandleGetSingleImage(c *gin.Context) {
+	log := srv.getLog(c)
+
+	id := c.Param("id")
+	image, err := srv.DB.GetImageByID(id)
+	if err != nil {
+		log.Errorf("Error fetching image from database >> %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch image"})
+		return
+	}
+
+	if image == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Image not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, image)
+}

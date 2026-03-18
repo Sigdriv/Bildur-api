@@ -5,11 +5,13 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/Sigdriv/Bildur-api/model"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq" // PostgreSQL driver
 )
 
 type validGenerics interface {
+	model.PreviewImage | model.Image
 }
 
 func Query[T validGenerics](db *DB, query string, args map[string]any) ([]T, error) {
