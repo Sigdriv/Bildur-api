@@ -11,6 +11,7 @@ type Image struct {
 	Name        string    `json:"name" db:"name"`
 	CreatedAt   time.Time `json:"createdAt" db:"createdAt"`
 	MimeType    string    `json:"mimeType" db:"mimeType"`
+	Extension   string    `json:"extension" db:"extension"`
 	Width       int       `json:"width" db:"width"`
 	Height      int       `json:"height" db:"height"`
 	StoragePath string    `json:"storagePath" db:"storagePath"`

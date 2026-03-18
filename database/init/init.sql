@@ -5,6 +5,7 @@ CREATE TABLE "images" (
     "id"           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "name"         TEXT NOT NULL,           -- Filnavn fra opplasting
     "mimeType"     TEXT NOT NULL,           -- f.eks. image/jpeg
+    "extension"    TEXT NOT NULL,           -- f.eks. jpg, png
     "bytes"        BIGINT NOT NULL,         -- Filstørrelse
     "storagePath"  TEXT NOT NULL,           -- Hvor fila ligger (disk, S3, osv.)
     "width"        INT,                     -- Bildebredde i piksler

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/Sigdriv/Bildur-api/model"
@@ -40,4 +41,28 @@ func (srv *Handler) HandleGetSingleImage(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, image)
+}
+
+func (srv *Handler) HandleDownloadImage(c *gin.Context) {
+	log := srv.getLog(c)
+
+	id := c.Param("id")
+	image, err := srv.DB.GetImageByID(id)
+	if err != nil {
+		log.Errorf("Error fetching image from database >> %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch image"})
+		return
+	}
+
+	if image == nil {
+		log.Warnf("Requested image not found: %s", id)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Image not found"})
+		return
+	}
+
+	filePath := fmt.Sprintf("./%s/%s.%s", image.StoragePath, image.ID, image.Extension)
+
+	c.Header("Content-Disposition", "attachment; filename="+image.Name)
+
+	c.FileAttachment(filePath, image.Name)
 }

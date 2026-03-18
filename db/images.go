@@ -23,7 +23,7 @@ func (db *DB) GetImages() (images []model.PreviewImage, err error) {
 
 func (db *DB) GetImageByID(id string) (image *model.Image, err error) {
 	query := `
-	select i.id, i."name", i."mimeType", i.bytes, i."storagePath", i.width, i.height, i."createdAt"
+	select i.id, i."name", i."mimeType", i.bytes, i."storagePath", i.width, i.height, i."createdAt", i.extension
 	from images i 
 	where id = :id
 	`
