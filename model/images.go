@@ -26,6 +26,8 @@ type PreviewImage struct {
 	Width       int       `json:"width" db:"width"`
 	Height      int       `json:"height" db:"height"`
 	CreatedAt   time.Time `json:"createdAt" db:"createdAt"`
+	Extension   string    `json:"extension" db:"extension"`
+	Name        string    `json:"name" db:"name"`
 }
 
 type InsertImage struct {
@@ -36,4 +38,13 @@ type InsertImage struct {
 	StoragePath string `json:"storagePath" validate:"required"`
 	Width       int    `json:"width" validate:"required"`
 	Height      int    `json:"height" validate:"required"`
+}
+
+type InsertThumbnailImage struct {
+	ParentID    uuid.UUID `json:"parentId" db:"imageId"`
+	VariantName string    `json:"variantName" db:"variantName"`
+	StoragePath string    `json:"storagePath" db:"storagePath"`
+	Width       int       `json:"width" db:"width"`
+	Height      int       `json:"height" db:"height"`
+	CreatedAt   time.Time `json:"createdAt" db:"createdAt"`
 }

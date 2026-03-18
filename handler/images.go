@@ -4,17 +4,28 @@ import (
 	"fmt"
 	"image"
 	_ "image/gif"
+	"image/jpeg"
 	_ "image/jpeg"
+	"image/png"
 	_ "image/png"
 	"io"
 	"mime"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/Sigdriv/Bildur-api/db"
 	"github.com/Sigdriv/Bildur-api/model"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"golang.org/x/image/draw"
 )
+
+const FullSizeStoragePath = "media/fullsize"
+const ThumbnailStoragePath = "media/thumbnails"
+const MaxThumbnailSize = 300
 
 func (srv *Handler) HandleGetImages(c *gin.Context) {
 	log := srv.getLog(c)
@@ -86,73 +97,23 @@ func (srv *Handler) HandleUploadImage(c *gin.Context) {
 	}
 	defer file.Close()
 
-	sniffSize := 512
-	sniffBuffer := make([]byte, sniffSize)
-	n, err := file.Read(sniffBuffer)
+	mimeType, ext, size, width, height, err := getFileInfo(file, fileHeader)
 	if err != nil {
-		log.Errorf("Error reading file for MIME type detection >> %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read file"})
+		log.Errorf("Error processing uploaded file >> %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to process file"})
 		return
 	}
 
-	mimeType := http.DetectContentType(sniffBuffer[:n])
-	log.Infof("Detected MIME type: %s", mimeType)
-
-	exts, _ := mime.ExtensionsByType(mimeType)
-	var ext string
-	if len(exts) > 0 {
-		ext = exts[0][1:] // Remove the leading dot
-	}
-
-	log.Infof("Determined file extension: %s", ext)
-
-	if ext == "" {
-		log.Warnf("Could not determine file extension for MIME type: %s", mimeType)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Unsupported file type"})
-		return
-	}
-
-	_, err = file.Seek(0, io.SeekStart)
-	if err != nil {
-		log.Errorf("Error resetting file pointer >> %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to process file"})
-		return
-	}
-
-	imgCfg, _, err := image.DecodeConfig(file)
-	if err != nil {
-		log.Errorf("Error decoding image config >> %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to decode image"})
-		return
-	}
-
-	log.Infof("Image dimensions: %dx%d", imgCfg.Width, imgCfg.Height)
-
-	if fileHeader.Size <= 0 {
-		size, sizeErr := file.Seek(0, io.SeekEnd)
-		if sizeErr != nil {
-			log.Errorf("Error determining file size >> %v", sizeErr)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to determine file size"})
-			return
-		}
-		fileHeader.Size = size
-	}
-
-	_, err = file.Seek(0, io.SeekStart)
-	if err != nil {
-		log.Errorf("Error resetting file pointer >> %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to process file"})
-		return
-	}
+	name := strings.Split(fileHeader.Filename, ".")[0]
 
 	image := model.InsertImage{
-		Name:        fileHeader.Filename,
+		Name:        name,
 		MimeType:    mimeType,
 		Extension:   ext,
-		Bytes:       fileHeader.Size,
-		StoragePath: "media/fullsize",
-		Width:       imgCfg.Width,
-		Height:      imgCfg.Height,
+		Bytes:       size,
+		StoragePath: FullSizeStoragePath,
+		Width:       width,
+		Height:      height,
 	}
 
 	id, err := srv.DB.InsertImage(image)
@@ -164,8 +125,8 @@ func (srv *Handler) HandleUploadImage(c *gin.Context) {
 
 	log.Infof("Successfully uploaded image with ID: %s", id)
 
-	uploadDir := "./media/fullsize"
-	err = os.MkdirAll(uploadDir, 0o755)
+	uploadDir := fmt.Sprintf("./%s", FullSizeStoragePath)
+	err = createPathIfNotExists(uploadDir)
 	if err != nil {
 		log.Errorf("Error creating upload directory >> %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create upload directory"})
@@ -190,7 +151,156 @@ func (srv *Handler) HandleUploadImage(c *gin.Context) {
 		return
 	}
 
-	log.Infof("File saved successfully at: %s", storagePath)
+	err = createThumbnail(uuid.MustParse(id), ext, srv.DB)
+	if err != nil {
+		log.Errorf("Error creating thumbnail >> %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create thumbnail"})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{"id": id})
+}
+
+func getFileInfo(file multipart.File, fileHeader *multipart.FileHeader) (mimeType string, ext string, size int64, width int, height int, err error) {
+	sniffSize := 512
+	sniffBuffer := make([]byte, sniffSize)
+	n, err := file.Read(sniffBuffer)
+	if err != nil {
+		err = fmt.Errorf("Error reading file for MIME type detection >> %w", err)
+		return
+	}
+
+	mimeType = http.DetectContentType(sniffBuffer[:n])
+
+	exts, _ := mime.ExtensionsByType(mimeType)
+	if len(exts) > 0 {
+		ext = exts[0][1:] // Remove the leading dot
+	}
+
+	if ext == "" {
+		err = fmt.Errorf("Could not determine file extension for MIME type: %s", mimeType)
+		return
+	}
+
+	if ext == "jpe" {
+		ext = "jpeg"
+	}
+
+	_, err = file.Seek(0, io.SeekStart)
+	if err != nil {
+		err = fmt.Errorf("Error resetting file pointer >> %w", err)
+		return
+	}
+
+	imgCfg, _, err := image.DecodeConfig(file)
+	if err != nil {
+		err = fmt.Errorf("Error decoding image config >> %w", err)
+		return
+	}
+
+	if fileHeader.Size <= 0 {
+		newSize, sizeErr := file.Seek(0, io.SeekEnd)
+		if sizeErr != nil {
+			err = fmt.Errorf("Error determining file size >> %w", sizeErr)
+			return
+		}
+		fileHeader.Size = newSize
+	}
+
+	_, err = file.Seek(0, io.SeekStart)
+	if err != nil {
+		err = fmt.Errorf("Error resetting file pointer >> %w", err)
+		return
+	}
+
+	return mimeType, ext, fileHeader.Size, imgCfg.Width, imgCfg.Height, nil
+}
+
+func createThumbnail(imageID uuid.UUID, imageExt string, db db.DB) (err error) {
+	imagePath := fmt.Sprintf("./%s/%s.%s", FullSizeStoragePath, imageID, imageExt)
+	in, err := os.Open(imagePath)
+	if err != nil {
+		err = fmt.Errorf("Error opening image file >> %w", err)
+		return
+	}
+	defer in.Close()
+
+	srcImg, format, err := image.Decode(in)
+	if err != nil {
+		err = fmt.Errorf("Error decoding image >> %w", err)
+		return
+	}
+
+	bounds := srcImg.Bounds()
+	width := bounds.Dx()
+	height := bounds.Dy()
+
+	scale := 1.0
+	if width > MaxThumbnailSize || height > MaxThumbnailSize {
+		if width > height {
+			scale = float64(MaxThumbnailSize) / float64(width)
+		} else {
+			scale = float64(MaxThumbnailSize) / float64(height)
+		}
+	}
+
+	newW := int(float64(width) * scale)
+	newH := int(float64(height) * scale)
+
+	thumbImg := image.NewRGBA(image.Rect(0, 0, newW, newH))
+	draw.CatmullRom.Scale(thumbImg, thumbImg.Bounds(), srcImg, bounds, draw.Over, nil)
+
+	image := model.InsertThumbnailImage{
+		ParentID:    imageID,
+		VariantName: "thumb",
+		StoragePath: ThumbnailStoragePath,
+		Width:       newW,
+		Height:      newH,
+	}
+
+	id, err := db.InsertThumbnailImage(image)
+
+	dstPath := fmt.Sprintf("./%s", ThumbnailStoragePath)
+	err = createPathIfNotExists(dstPath)
+	if err != nil {
+		err = fmt.Errorf("error creating thumbnail directory >> %w", err)
+		return
+	}
+
+	storageFileName := fmt.Sprintf("%s.%s", id, imageExt)
+	storagePath := filepath.Join(dstPath, storageFileName)
+
+	out, err := os.Create(storagePath)
+	if err != nil {
+		err = fmt.Errorf("error creating thumbnail file on disk >> %w", err)
+		return
+	}
+	defer out.Close()
+
+	switch format {
+	case "jpeg":
+		err = jpeg.Encode(out, thumbImg, nil)
+	case "png":
+		err = png.Encode(out, thumbImg)
+	case "jpg":
+		err = jpeg.Encode(out, thumbImg, nil)
+	default:
+		err = fmt.Errorf("unsupported image format: %s", format)
+	}
+	if err != nil {
+		err = fmt.Errorf("error encoding thumbnail image >> %w", err)
+		return
+	}
+
+	return
+}
+
+func createPathIfNotExists(path string) (err error) {
+	err = os.MkdirAll(path, 0o755)
+	if err != nil {
+		err = fmt.Errorf("error creating upload directory >> %w", err)
+		return
+	}
+
+	return
 }
