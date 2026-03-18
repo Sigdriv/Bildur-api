@@ -1,7 +1,9 @@
 package main
 
-// func main() {
-// 	srv := handler.CreateHandler()
+import "github.com/Sigdriv/Bildur-api/handler"
 
-// 	srv.CreateGinGroup()
-// }
+func main() {
+	srv := handler.CreateHandler()
+
+	srv.CreateGinGroup()
+}
