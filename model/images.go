@@ -27,3 +27,13 @@ type PreviewImage struct {
 	Height      int       `json:"height" db:"height"`
 	CreatedAt   time.Time `json:"createdAt" db:"createdAt"`
 }
+
+type InsertImage struct {
+	Name        string `json:"name" validate:"required"`
+	MimeType    string `json:"mimeType" validate:"required"`
+	Extension   string `json:"extension" validate:"required"`
+	Bytes       int64  `json:"bytes" validate:"required"`
+	StoragePath string `json:"storagePath" validate:"required"`
+	Width       int    `json:"width" validate:"required"`
+	Height      int    `json:"height" validate:"required"`
+}

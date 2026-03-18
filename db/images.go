@@ -44,3 +44,31 @@ func (db *DB) GetImageByID(id string) (image *model.Image, err error) {
 
 	return
 }
+
+func (db *DB) InsertImage(image model.InsertImage) (id string, err error) {
+	query := `
+	insert into images (name, "mimeType", extension, bytes, "storagePath", width, height)
+	values (:name, :mimeType, :extension, :bytes, :storagePath, :width, :height)
+	returning id
+	`
+
+	args := map[string]any{
+		"name":        image.Name,
+		"mimeType":    image.MimeType,
+		"extension":   image.Extension,
+		"bytes":       image.Bytes,
+		"storagePath": image.StoragePath,
+		"width":       image.Width,
+		"height":      image.Height,
+	}
+
+	query, args = In(query, args)
+
+	id, err = Exec(db, query, args)
+	if err != nil {
+		err = fmt.Errorf("error inserting image into database >> %s", err)
+		return
+	}
+
+	return
+}
