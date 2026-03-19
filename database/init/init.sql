@@ -18,39 +18,23 @@ CREATE TABLE "images" (
 -- ============================================================
 CREATE TABLE "imagePreviews" (
     "id"           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    "imageId"      UUID NOT NULL REFERENCES "images"("id") ON DELETE CASCADE,
-    "variantName"  TEXT NOT NULL,                 -- f.eks. 'thumb', 'medium'
+    "originalImageId"      UUID NOT NULL REFERENCES "images"("id") ON DELETE CASCADE,
     "storagePath"  TEXT NOT NULL,                 -- hvor preview-fila ligger
     "width"        INT,
     "height"       INT,
     "createdAt"    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE ("imageId", "variantName")
+    UNIQUE ("originalImageId")
 );
 
 -- ============================================================
---  Tabell: filters
+--  Tabell: greyScaleImages
 -- ============================================================
-CREATE TABLE "filters" (
-    "id"          SERIAL PRIMARY KEY,
-    "name"        TEXT NOT NULL UNIQUE,
-    "description" TEXT
-);
-
-INSERT INTO "filters" ("name", "description") VALUES
-    ('grayscale', 'Konverter bildet til svart-kvitt')
-ON CONFLICT ("name") DO NOTHING;
-
--- ============================================================
---  Tabell: editedImages
--- ============================================================
-CREATE TABLE "editedImages" (
+CREATE TABLE "greyScaleImages" (
     "id"              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "originalImageId" UUID NOT NULL REFERENCES "images"("id") ON DELETE CASCADE,
-    "filterId"         INT REFERENCES "filters"("id"),
     "storagePath"     TEXT NOT NULL,
-    "width"           INT,
-    "height"          INT,
-    "createdAt"       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    "createdAt"       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE ("originalImageId")
 );
 
 -- ============================================================

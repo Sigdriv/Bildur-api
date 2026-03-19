@@ -7,27 +7,27 @@ import (
 )
 
 type Image struct {
-	ID          uuid.UUID `json:"id" db:"id"`
-	Name        string    `json:"name" db:"name"`
-	CreatedAt   time.Time `json:"createdAt" db:"createdAt"`
-	MimeType    string    `json:"mimeType" db:"mimeType"`
-	Extension   string    `json:"extension" db:"extension"`
-	Width       int       `json:"width" db:"width"`
-	Height      int       `json:"height" db:"height"`
-	StoragePath string    `json:"storagePath" db:"storagePath"`
-	Bytes       string    `json:"-" db:"bytes"`
+	ID          uuid.UUID  `json:"id" db:"id"`
+	Name        string     `json:"name" db:"name"`
+	MimeType    string     `json:"mimeType" db:"mimeType"`
+	Extension   string     `json:"extension" db:"extension"`
+	Bytes       string     `json:"-" db:"bytes"`
+	StoragePath string     `json:"storagePath" db:"storagePath"`
+	Width       int        `json:"width" db:"width"`
+	Height      int        `json:"height" db:"height"`
+	CreatedAt   time.Time  `json:"createdAt" db:"createdAt"`
+	GreyScaleID *uuid.UUID `json:"greyScaleId,omitempty" db:"greyScaleId"`
 }
 
 type PreviewImage struct {
-	ID          uuid.UUID `json:"id" db:"id"`
-	ParentID    uuid.UUID `json:"parentId" db:"imageId"`
-	VariantName string    `json:"variantName" db:"variantName"`
-	StoragePath string    `json:"storagePath" db:"storagePath"`
-	Width       int       `json:"width" db:"width"`
-	Height      int       `json:"height" db:"height"`
-	CreatedAt   time.Time `json:"createdAt" db:"createdAt"`
-	Extension   string    `json:"extension" db:"extension"`
-	Name        string    `json:"name" db:"name"`
+	ID              uuid.UUID `json:"id" db:"id"`
+	OriginalImageID uuid.UUID `json:"originalImageId" db:"originalImageId"`
+	StoragePath     string    `json:"storagePath" db:"storagePath"`
+	Width           int       `json:"width" db:"width"`
+	Height          int       `json:"height" db:"height"`
+	CreatedAt       time.Time `json:"createdAt" db:"createdAt"`
+	Extension       string    `json:"extension" db:"extension"`
+	Name            string    `json:"name" db:"name"`
 }
 
 type InsertImage struct {
@@ -41,10 +41,16 @@ type InsertImage struct {
 }
 
 type InsertThumbnailImage struct {
-	ParentID    uuid.UUID `json:"parentId" db:"imageId"`
-	VariantName string    `json:"variantName" db:"variantName"`
-	StoragePath string    `json:"storagePath" db:"storagePath"`
-	Width       int       `json:"width" db:"width"`
-	Height      int       `json:"height" db:"height"`
-	CreatedAt   time.Time `json:"createdAt" db:"createdAt"`
+	OriginalImageId uuid.UUID `json:"originalImageId" db:"originalImageId"`
+	StoragePath     string    `json:"storagePath" db:"storagePath"`
+	Width           int       `json:"width" db:"width"`
+	Height          int       `json:"height" db:"height"`
+	CreatedAt       time.Time `json:"createdAt" db:"createdAt"`
+}
+
+type InsertGreyScaleImage struct {
+	ID              uuid.UUID `json:"id" db:"id"`
+	OriginalImageId uuid.UUID `json:"originalImageId" db:"originalImageId"`
+	StoragePath     string    `json:"storagePath" db:"storagePath"`
+	CreatedAt       time.Time `json:"createdAt" db:"createdAt"`
 }

@@ -75,9 +75,9 @@ func (srv *Handler) CreateGinGroup() {
 
 	router.GET("/images/:id/download", srv.HandleDownloadImage)
 
-
 	router.POST("/images", srv.HandleUploadImage)
 
+	router.POST("/images/:id/grey-scale", srv.HandleGreyScaleImage)
 
 	runner := fmt.Sprintf("localhost:%s", srv.Config.Port)
 	router.Run(runner)

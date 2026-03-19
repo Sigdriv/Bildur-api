@@ -4,13 +4,14 @@ import (
 	"fmt"
 
 	"github.com/Sigdriv/Bildur-api/model"
+	"github.com/google/uuid"
 )
 
 func (db *DB) GetImages() (images []model.PreviewImage, err error) {
 	query := `
-	select ip.id, ip."imageId", ip."variantName", ip."storagePath", ip.width, ip.height, ip."createdAt", i."extension", i."name"
+	select ip.id, ip."originalImageId", ip."storagePath", ip.width, ip.height, ip."createdAt", i."extension", i."name"
 	from "imagePreviews" ip
-	left join images i on i.id = ip."imageId"
+	left join images i on i.id = ip."originalImageId"
 	`
 
 	images, err = Query[model.PreviewImage](db, query, nil)
@@ -24,9 +25,10 @@ func (db *DB) GetImages() (images []model.PreviewImage, err error) {
 
 func (db *DB) GetImageByID(id string) (image *model.Image, err error) {
 	query := `
-	select i.id, i."name", i."mimeType", i.bytes, i."storagePath", i.width, i.height, i."createdAt", i.extension
+	select i.id, i."name", i."mimeType", i.bytes, i."storagePath", i.width, i.height, i."createdAt", i.extension, g.id as "greyScaleId"
 	from images i 
-	where id = :id
+	left join "greyScaleImages" g on g."originalImageId" = i.id
+	where i.id = :id
 	`
 
 	args := map[string]any{
@@ -76,18 +78,17 @@ func (db *DB) InsertImage(image model.InsertImage) (id string, err error) {
 
 func (db *DB) InsertThumbnailImage(image model.InsertThumbnailImage) (id string, err error) {
 	query := `
-	insert into "imagePreviews" ("imageId", "variantName", "storagePath", width, height, "createdAt")
-	values (:imageId, :variantName, :storagePath, :width, :height, :createdAt)
+	insert into "imagePreviews" ("originalImageId", "storagePath", width, height, "createdAt")
+	values (:originalImageId, :storagePath, :width, :height, :createdAt)
 	returning id
 	`
 
 	args := map[string]any{
-		"imageId":     image.ParentID,
-		"variantName": image.VariantName,
-		"storagePath": image.StoragePath,
-		"width":       image.Width,
-		"height":      image.Height,
-		"createdAt":   image.CreatedAt,
+		"originalImageId": image.OriginalImageId,
+		"storagePath":     image.StoragePath,
+		"width":           image.Width,
+		"height":          image.Height,
+		"createdAt":       image.CreatedAt,
 	}
 
 	query, args = In(query, args)
@@ -95,6 +96,36 @@ func (db *DB) InsertThumbnailImage(image model.InsertThumbnailImage) (id string,
 	id, err = Exec(db, query, args)
 	if err != nil {
 		err = fmt.Errorf("error inserting thumbnail image into database >> %s", err)
+		return
+	}
+
+	return
+}
+
+func (db *DB) InsertGreyScaleImage(image model.InsertGreyScaleImage) (id uuid.UUID, err error) {
+	query := `
+	insert into "greyScaleImages" ("originalImageId", "storagePath", "createdAt")
+	values (:originalImageId, :storagePath, :createdAt)
+	returning id
+	`
+
+	args := map[string]any{
+		"originalImageId": image.OriginalImageId,
+		"storagePath":     image.StoragePath,
+		"createdAt":       image.CreatedAt,
+	}
+
+	query, args = In(query, args)
+
+	idStr, err := Exec(db, query, args)
+	if err != nil {
+		err = fmt.Errorf("error inserting grey scale image into database >> %s", err)
+		return
+	}
+
+	id, err = uuid.Parse(idStr)
+	if err != nil {
+		err = fmt.Errorf("error parsing grey scale image ID >> %s", err)
 		return
 	}
 

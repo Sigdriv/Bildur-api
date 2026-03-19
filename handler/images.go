@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/Sigdriv/Bildur-api/db"
 	"github.com/Sigdriv/Bildur-api/model"
@@ -25,6 +26,7 @@ import (
 
 const FullSizeStoragePath = "media/fullsize"
 const ThumbnailStoragePath = "media/thumbnails"
+const GreyScaleStoragePath = "media/greyscale"
 const MaxThumbnailSize = 300
 
 func (srv *Handler) HandleGetImages(c *gin.Context) {
@@ -34,6 +36,7 @@ func (srv *Handler) HandleGetImages(c *gin.Context) {
 	if err != nil {
 		log.Errorf("Error fetching images from database >> %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch images"})
+		return
 	}
 
 	if len(images) == 0 {
@@ -251,14 +254,18 @@ func createThumbnail(imageID uuid.UUID, imageExt string, db db.DB) (err error) {
 	draw.CatmullRom.Scale(thumbImg, thumbImg.Bounds(), srcImg, bounds, draw.Over, nil)
 
 	image := model.InsertThumbnailImage{
-		ParentID:    imageID,
-		VariantName: "thumb",
-		StoragePath: ThumbnailStoragePath,
-		Width:       newW,
-		Height:      newH,
+		OriginalImageId: imageID,
+		StoragePath:     ThumbnailStoragePath,
+		Width:           newW,
+		Height:          newH,
+		CreatedAt:       time.Now(),
 	}
 
 	id, err := db.InsertThumbnailImage(image)
+	if err != nil {
+		err = fmt.Errorf("error inserting thumbnail image into database >> %w", err)
+		return
+	}
 
 	dstPath := fmt.Sprintf("./%s", ThumbnailStoragePath)
 	err = createPathIfNotExists(dstPath)
