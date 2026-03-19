@@ -48,6 +48,28 @@ func (db *DB) GetImageByID(id string) (image *model.Image, err error) {
 	return
 }
 
+func (db *DB) GetImagesByIDs(IDs []uuid.UUID) (images []model.Image, err error) {
+	query := `
+	select i.id, i."name", i."mimeType", i.bytes, i."storagePath", i.width, i.height, i."createdAt", i.extension
+	from images i 
+	where i.id IN (:ids)
+	`
+
+	args := map[string]any{
+		"ids": IDs,
+	}
+
+	query, args = In(query, args)
+
+	images, err = Query[model.Image](db, query, args)
+	if err != nil {
+		err = fmt.Errorf("error fetching images by IDs from database >> %s", err)
+		return
+	}
+
+	return
+}
+
 func (db *DB) InsertImage(image model.InsertImage) (id string, err error) {
 	query := `
 	insert into images (name, "mimeType", extension, bytes, "storagePath", width, height)

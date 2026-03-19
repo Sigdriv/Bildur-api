@@ -27,6 +27,7 @@ import (
 const FullSizeStoragePath = "media/fullsize"
 const ThumbnailStoragePath = "media/thumbnails"
 const GreyScaleStoragePath = "media/greyscale"
+const CollageStoragePath = "media/collages"
 const MaxThumbnailSize = 300
 
 func (srv *Handler) HandleGetImages(c *gin.Context) {
